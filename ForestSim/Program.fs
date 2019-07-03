@@ -4,12 +4,12 @@
 open System
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
-
-type Tile = Grass | Rock | Sand
+open ForestSim.Entity
+open ForestSim.Map
 
 type GameState = {
-    Foo: int
-    Grid: Tile array array
+    map: Map
+    entities: Entity list
 }
 
 type ForestSim () as game =
@@ -21,43 +21,72 @@ type ForestSim () as game =
 
     // Immutable contents, mutable reference cell
     let latestGameState = ref {
-        Foo = 0
-        Grid = [| for i in 1 .. 10 ->
-                   [| for j in 1 .. 10 ->
-                       Grass
-                   |]
-               |]
+        map = [||]
+        entities = []
     }
 
     // Execute game logic on a background thread
     let gameLoop =
+
+        // We don't want to waste time processing old turns, so take
+        // all pending messages and sum the total elapsed time.
+        let consumeAllMail (inbox:MailboxProcessor<GameTime>) = async {
+            let! gameTime = inbox.Receive ()
+            let mutable elapsed = gameTime.ElapsedGameTime
+            while inbox.CurrentQueueLength > 0 do
+                let! gameTime2 = inbox.Receive ()
+                elapsed <- elapsed + gameTime2.ElapsedGameTime
+            return elapsed
+        }
+
+        // Main game logic loop
         MailboxProcessor.Start (fun inbox -> async {
             while true do
-                let! msg = inbox.Receive ()
+                let! timeElapsed = consumeAllMail inbox
                 let prevState = !latestGameState
                 latestGameState := {
-                    Foo = rand.Next ()
-                    Grid = prevState.Grid
+                    map = prevState.map
+                    entities = prevState.entities
                 }
         })
 
-    do // Post-initialization constructor logic
-        gfx.IsFullScreen <- false
+    // Post-initialization constructor logic
+    do  gfx.IsFullScreen <- false
         gfx.PreferredBackBufferWidth <- 1600
         gfx.PreferredBackBufferHeight <- 900
-        game.Content.RootDirectory <- "Content"
+        game.Content.RootDirectory <- "."
         ()
 
-    // Implement MonoGame interface
-    override ForestSim.Initialize () = ()
-    override ForestSim.LoadContent () = ()
-    override ForestSim.Update (gameTime:GameTime) = gameLoop.Post (gameTime)
+    member game.tileDisplayLayer =
+        new RenderTarget2D(game.GraphicsDevice,
+                           gfx.PreferredBackBufferWidth,
+                           gfx.PreferredBackBufferHeight)
+
+    // Initialize the non-graphic game content
+    override ForestSim.Initialize () =
+        latestGameState := {
+            map = generateMap 2 32
+            entities = []
+        }
+
+    // Initialize the graphics
+    override ForestSim.LoadContent () =
+        ()
+
+    // Execute one tick of game logic
+    override ForestSim.Update gameTime =
+        gameLoop.Post (gameTime)
+
+    // Draw one frame
     override ForestSim.Draw (gameTime:GameTime) =
         let gameState = !latestGameState
-        if 0 = gameState.Foo % 2
-        then game.GraphicsDevice.Clear (Color.DarkSlateBlue)
-        else game.GraphicsDevice.Clear (Color.CornflowerBlue)
-        ()
+        let image = game.Content.Load<Texture2D>("content/art/tiles/grass_1")
+        game.GraphicsDevice.Clear (Color.DarkSlateBlue)
+        let spriteBatch = new SpriteBatch(game.GraphicsDevice)
+        spriteBatch.Begin()
+        spriteBatch.Draw(image, Vector2.Zero, Color.White);
+        spriteBatch.End()
+        base.Draw(gameTime)
 
 [<STAThread>]
 [<EntryPoint>]

@@ -58,6 +58,8 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Entity.fs" />
+    <Compile Include="Map.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <Content Include="packages.config" />
@@ -123,21 +125,9 @@
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
   </Target>
+  <Exec Command="$(ILMergeConsolePath) $(OutputPath)ForestSim.exe /out:$(OutputPath)..\ForestSim.exe $(OutputPath)FSharp.Core.dll $(OutputPath)MonoGame.Framework.dll $(OutputPath)SharpDX.Direct2D1.dll $(OutputPath)SharpDX.Direct3D11.dll $(OutputPath)SharpDX.Direct3D9.dll $(OutputPath)SharpDX.dll $(OutputPath)SharpDX.DXGI.dll $(OutputPath)SharpDX.Mathematics.dll $(OutputPath)SharpDX.MediaFoundation.dll $(OutputPath)SharpDX.XAudio2.dll $(OutputPath)SharpDX.XInput.dll " />
   -->
-  <Target Condition=" '$(Configuration)' == 'Release' " Name="AfterBuild">
-    <!-- the ILMergePath property points to the location of ILMerge.exe console application -->
-    <Exec Command="$(ILMergeConsolePath) $(OutputPath)ForestSim.exe ^
-/out:$(OutputPath)..\ForestSim.exe ^
-$(OutputPath)FSharp.Core.dll ^
-$(OutputPath)MonoGame.Framework.dll ^
-$(OutputPath)SharpDX.Direct2D1.dll ^
-$(OutputPath)SharpDX.Direct3D11.dll ^
-$(OutputPath)SharpDX.Direct3D9.dll ^
-$(OutputPath)SharpDX.dll ^
-$(OutputPath)SharpDX.DXGI.dll ^
-$(OutputPath)SharpDX.Mathematics.dll ^
-$(OutputPath)SharpDX.MediaFoundation.dll ^
-$(OutputPath)SharpDX.XAudio2.dll ^
-$(OutputPath)SharpDX.XInput.dll " />
+  <Target Name="AfterBuild">
+    <Exec Command="$(ProjectDir)\Content\build_content.cmd $(OutputPath)\content" />
   </Target>
 </Project>
