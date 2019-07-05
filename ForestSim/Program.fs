@@ -17,17 +17,16 @@ type ForestSim () as game =
     let rand = System.Random ()
 
     // Controls the window size
-    let gfx = new GraphicsDeviceManager (game)
+    let gfx = new GraphicsDeviceManager(game)
 
     // Immutable contents, mutable reference cell
     let latestGameState = ref {
-        map = [||]
+        map = []
         entities = []
     }
 
     // Execute game logic on a background thread
     let gameLoop =
-
         // We don't want to waste time processing old turns, so take
         // all pending messages and sum the total elapsed time.
         let consumeAllMail (inbox:MailboxProcessor<GameTime>) = async {
@@ -55,7 +54,6 @@ type ForestSim () as game =
         gfx.PreferredBackBufferWidth <- 1600
         gfx.PreferredBackBufferHeight <- 900
         game.Content.RootDirectory <- "."
-        ()
 
     member game.tileDisplayLayer =
         new RenderTarget2D(game.GraphicsDevice,
@@ -65,13 +63,14 @@ type ForestSim () as game =
     // Initialize the non-graphic game content
     override ForestSim.Initialize () =
         latestGameState := {
-            map = generateMap 2 32
+            map = generateMap 32
             entities = []
         }
+        base.Initialize()
 
     // Initialize the graphics
     override ForestSim.LoadContent () =
-        ()
+        base.LoadContent()
 
     // Execute one tick of game logic
     override ForestSim.Update gameTime =
@@ -80,11 +79,18 @@ type ForestSim () as game =
     // Draw one frame
     override ForestSim.Draw (gameTime:GameTime) =
         let gameState = !latestGameState
-        let image = game.Content.Load<Texture2D>("content/art/tiles/grass_1")
-        game.GraphicsDevice.Clear (Color.DarkSlateBlue)
+        let grass = game.Content.Load<Texture2D>("content/art/tiles/grass_1")
+        let sand = game.Content.Load<Texture2D>("content/art/tiles/sand_1")
+        game.GraphicsDevice.Clear(Color.DarkSlateBlue)
         let spriteBatch = new SpriteBatch(game.GraphicsDevice)
         spriteBatch.Begin()
-        spriteBatch.Draw(image, Vector2.Zero, Color.White);
+        for x in 0 .. gameState.map.Length - 1 do
+            for y in 0 .. gameState.map.Head.Length - 1 do
+                let pixelX, pixelY = mapToScreen x y
+                let texture = match (gameState.map.Item x).Item y with
+                              | Grass -> grass
+                              | _ -> sand
+                spriteBatch.Draw(texture, new Vector2(float32(pixelX), float32(pixelY)), Color.White);
         spriteBatch.End()
         base.Draw(gameTime)
 
